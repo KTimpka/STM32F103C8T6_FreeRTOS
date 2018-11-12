@@ -17,7 +17,7 @@
 
 #include "hw_start.h"
 #include "blinky.h"
-#include "hw_usart_simple.h"
+//#include "hw_usart_simple.h"
 			
 static void test_thread(void *pvParameters);
 
@@ -43,7 +43,7 @@ int main(void)
 
 static void test_thread(void *pvParameters)
 {
-
+/*
 	HW_USART_TypeDef HW_USART_Conf;
 	HW_USART_Conf.USARTx 		= 	USART3;
 	HW_USART_Conf.Periph_USARTx	=	RCC_APB1Periph_USART3;
@@ -67,6 +67,7 @@ static void test_thread(void *pvParameters)
 
 		vTaskDelay((TickType_t) (500 / portTICK_PERIOD_MS));
 	}
+	*/
 
 	for(;;);
 }

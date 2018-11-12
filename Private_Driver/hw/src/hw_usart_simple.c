@@ -232,6 +232,7 @@ void DMA1_Channel7_IRQHandler(void)
 		xSemaphoreGive(G_SEND_LOCK_2);
 	}
 }
+/*
 void DMA1_Channel2_IRQHandler(void)
 {
 	if (DMA_GetFlagStatus(DMA1_FLAG_TC2)) {
@@ -240,4 +241,5 @@ void DMA1_Channel2_IRQHandler(void)
 		xSemaphoreGive(G_SEND_LOCK_3);
 	}
 }
+*/
 

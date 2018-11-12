@@ -83,7 +83,7 @@ void DMA1_Channel4_IRQHandler(void);
 void DMA1_Channel7_IRQHandler(void);
 #endif
 #ifdef HW_USART_IRQ_2
-void DMA1_Channel2_IRQHandler(void);
+//void DMA1_Channel2_IRQHandler(void);
 #endif
 
 /*
