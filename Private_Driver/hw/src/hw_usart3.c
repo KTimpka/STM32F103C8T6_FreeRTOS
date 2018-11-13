@@ -23,24 +23,24 @@ static SemaphoreHandle_t G_WRITE_LOCK;
 void hw_usart3_init(uint32_t baud)
 {
 	//Start USART, Port, AF clock
-	RCC_APB1PeriphClockCmd(RCC_APB1Periph_USART3, ENABLE);	//USART3
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);	//PORTB
+	RCC_APB1PeriphClockCmd(USART_RCC, ENABLE);				//USART3
+	RCC_APB2PeriphClockCmd(PORT_RCC, ENABLE);				//PORTB
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);	//AF Port
 
 	//Pin config struct
 	GPIO_InitTypeDef GPIO_Conf;
 
 	//Configure Port
-	GPIO_Conf.GPIO_Pin 		= GPIO_Pin_11;
+	GPIO_Conf.GPIO_Pin 		= PIN_TX;
 	GPIO_Conf.GPIO_Speed 	= GPIO_Speed_2MHz;
 	GPIO_Conf.GPIO_Mode 	= GPIO_Mode_IN_FLOATING;
-	GPIO_Init(GPIOB, &GPIO_Conf);
+	GPIO_Init(PORT_USED, &GPIO_Conf);
 
 	//Configure Port
-	GPIO_Conf.GPIO_Pin 		= GPIO_Pin_10;
+	GPIO_Conf.GPIO_Pin 		= PIN_RX;
 	//GPIO_Conf.GPIO_Speed 	= GPIO_Speed_2MHz;
 	GPIO_Conf.GPIO_Mode 	= GPIO_Mode_AF_PP;
-	GPIO_Init(GPIOB, &GPIO_Conf);
+	GPIO_Init(PORT_USED, &GPIO_Conf);
 
 	//USART config struct
 	USART_InitTypeDef USART_Conf;
@@ -51,8 +51,8 @@ void hw_usart3_init(uint32_t baud)
 	USART_Conf.USART_Parity					=	USART_Parity_Even;
 	USART_Conf.USART_Mode					=	USART_Mode_Rx | USART_Mode_Tx;
 	USART_Conf.USART_HardwareFlowControl	=	USART_HardwareFlowControl_None;
-	USART_Init(USART3, &USART_Conf);	//Apply to hardware
-	USART_Cmd(USART3, ENABLE);			//Start USART
+	USART_Init(USART_USED, &USART_Conf);	//Apply to hardware
+	USART_Cmd(USART_USED, ENABLE);			//Start USART
 }
 
 /*
@@ -64,11 +64,11 @@ void hw_usart3_init(uint32_t baud)
 void hw_usart3_dma_rx_init(uint32_t buffer_address, uint32_t buffer_size)
 {
 	//Start DMA
-	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
+	RCC_AHBPeriphClockCmd(DMA_RCC, ENABLE);
 
 	DMA_InitTypeDef DMA_Conf;
 
-	DMA_Conf.DMA_PeripheralBaseAddr	=	&(USART3->DR);						//USART read address
+	DMA_Conf.DMA_PeripheralBaseAddr	=	&(USART_USED->DR);					//USART read address
 	DMA_Conf.DMA_MemoryBaseAddr		=	buffer_address;						//Memory array address
 	DMA_Conf.DMA_DIR				=	DMA_DIR_PeripheralSRC;				//Peripheral as source
 	DMA_Conf.DMA_BufferSize			=	buffer_size;						//Buffer size
@@ -80,8 +80,8 @@ void hw_usart3_dma_rx_init(uint32_t buffer_address, uint32_t buffer_size)
 	DMA_Conf.DMA_Priority			=	DMA_Priority_Low;					//USART is not that important
 	DMA_Conf.DMA_M2M				=	DMA_M2M_Disable;					//Peripheral to memory
 
-	DMA_Init(DMA1_Channel3, &DMA_Conf);				//Init DMA for RX
-	USART_DMACmd(USART3, USART_DMAReq_Rx, ENABLE);	//Enable USART DMA request
+	DMA_Init(DMA_RX_CHANNEL, &DMA_Conf);				//Init DMA for RX
+	USART_DMACmd(USART_USED, USART_DMAReq_Rx, ENABLE);	//Enable USART DMA request
 }
 
 /*
@@ -93,11 +93,11 @@ void hw_usart3_dma_rx_init(uint32_t buffer_address, uint32_t buffer_size)
 void hw_usart3_dma_tx_init(uint32_t buffer_address, uint32_t buffer_size)
 {
 	//Start DMA
-	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
+	RCC_AHBPeriphClockCmd(DMA_RCC, ENABLE);
 
 	DMA_InitTypeDef DMA_Conf;
 
-	DMA_Conf.DMA_PeripheralBaseAddr	=	&(USART3->DR);				//USART read address
+	DMA_Conf.DMA_PeripheralBaseAddr	=	&(USART_USED->DR);			//USART read address
 	DMA_Conf.DMA_MemoryBaseAddr		=	buffer_address;				//Buffer address will be set when there is data to send
 	DMA_Conf.DMA_DIR				=	DMA_DIR_PeripheralDST;		//Peripheral as destination
 	DMA_Conf.DMA_BufferSize			=	buffer_size;				//Buffer size will be set when there is data to send
@@ -109,13 +109,14 @@ void hw_usart3_dma_tx_init(uint32_t buffer_address, uint32_t buffer_size)
 	DMA_Conf.DMA_Priority			=	DMA_Priority_Low;			//USART is not that important
 	DMA_Conf.DMA_M2M				=	DMA_M2M_Disable;			//Peripheral to memory
 
-	DMA_Init(DMA1_Channel2, &DMA_Conf);								//Configure DMA
-	DMA_ITConfig(DMA1_Channel2, DMA_IT_TC, ENABLE);					//Enable DMA NVIC transfer complete
+	DMA_Init(DMA_TX_CHANNEL, &DMA_Conf);							//Configure DMA
+	USART_DMACmd(USART_USED, USART_DMAReq_Tx, ENABLE);				//Enable USART DMA request
+	DMA_ITConfig(DMA_TX_CHANNEL, DMA_NVIC_FLAG, ENABLE);			//Enable DMA NVIC transfer complete
 
 
 	NVIC_InitTypeDef NVIC_conf;
 
-	NVIC_conf.NVIC_IRQChannel						=	DMA1_Channel2_IRQn;	//NVIC interrupt vector
+	NVIC_conf.NVIC_IRQChannel						=	DMA_NVIC_CHANNEL;	//NVIC interrupt vector
 	NVIC_conf.NVIC_IRQChannelPreemptionPriority		=	15;					//Priority 0...15	Not important at all
 	NVIC_conf.NVIC_IRQChannelSubPriority			=	0;					//Sub Priority not used
 	NVIC_conf.NVIC_IRQChannelCmd					=	ENABLE;				//Enable DMA1_Channel3 interrupt
@@ -138,10 +139,10 @@ uint32_t hw_usart3_send_dma(uint32_t buffer, uint32_t size)
 	if (xSemaphoreTake(G_WRITE_LOCK, 0) == pdFAIL)
 		return 0;
 
-	DMA_Cmd(DMA1_Channel2, DISABLE);	//Stop DMA
-	DMA1_Channel2->CNDTR	=	size;	//Update buffer size
-	DMA1_Channel2->CMAR		=	buffer;	//Update buffer address
-	DMA_Cmd(DMA1_Channel2, ENABLE);		//Start DMA
+	DMA_Cmd(DMA_TX_CHANNEL, DISABLE);	//Stop DMA
+	DMA_TX_CHANNEL->CNDTR	=	size;	//Update buffer size
+	DMA_TX_CHANNEL->CMAR	=	buffer;	//Update buffer address
+	DMA_Cmd(DMA_TX_CHANNEL, ENABLE);	//Start DMA
 
 	return size;
 }
@@ -153,9 +154,9 @@ uint32_t hw_usart3_send_dma(uint32_t buffer, uint32_t size)
  * */
 void DMA1_Channel2_IRQHandler(void)
 {
-	if (DMA_GetFlagStatus(DMA1_FLAG_TC2)) {
-		DMA_ClearFlag(DMA1_FLAG_TC2);		//Clear flag
-		DMA_Cmd(DMA1_Channel2, DISABLE);	//Stop DMA
+	if (DMA_GetFlagStatus(DMA_NVIC_FLAG)) {
+		DMA_ClearFlag(DMA_NVIC_FLAG);		//Clear flag
+		DMA_Cmd(DMA_TX_CHANNEL, DISABLE);	//Stop DMA
 		xSemaphoreGive(G_WRITE_LOCK);		//Reset lock
 	}
 }
