@@ -51,9 +51,9 @@ void hw_usart3_init(uint32_t baud)
 	USART_Conf.USART_Parity					=	USART_Parity_Even;
 	USART_Conf.USART_Mode					=	USART_Mode_Rx | USART_Mode_Tx;
 	USART_Conf.USART_HardwareFlowControl	=	USART_HardwareFlowControl_None;
-	USART_Init(USART_USED, &USART_Conf);		//Apply to hardware
-	USART_WakeUpConfig(USART_WakeUp_IdleLine);	//Wake up if idle line is detected
-	USART_Cmd(USART_USED, ENABLE);				//Start USART
+	USART_Init(USART_USED, &USART_Conf);					//Apply to hardware
+	USART_WakeUpConfig(USART_USED, USART_WakeUp_IdleLine);	//Wake up if idle line is detected
+	USART_Cmd(USART_USED, ENABLE);							//Start USART
 }
 
 /*
@@ -83,6 +83,7 @@ void hw_usart3_dma_rx_init(uint32_t buffer_address, uint32_t buffer_size)
 
 	DMA_Init(DMA_RX_CHANNEL, &DMA_Conf);							//Init DMA for RX
 	USART_DMACmd(USART_USED, USART_DMAReq_Rx, ENABLE);				//Enable USART DMA request
+	USART_ITConfig(USART_USED, USART_IT_IDLE, ENABLE);				//Enable USART idle line interruption
 	DMA_ITConfig(DMA_RX_CHANNEL, DMA_NVIC_RX_FLAG, ENABLE);			//Enable DMA NVIC transfer complete
 
 	NVIC_InitTypeDef NVIC_conf;
@@ -206,4 +207,9 @@ void DMA1_Channel3_IRQHandler(void)
 		DMA_Cmd(DMA_RX_CHANNEL, DISABLE);	//Stop DMA
 		DMA1_Channel3_IRQHandler_user();	//Reset lock
 	}
+}
+
+void USART3_IRQHandler(void)
+{
+
 }
