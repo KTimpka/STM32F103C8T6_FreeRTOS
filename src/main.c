@@ -72,6 +72,11 @@ static void test_thread(void *pvParameters)
 	for(;;);
 }
 
+void DMA1_Channel3_IRQHandler_user(void)
+{
+
+}
+
 void assert_failed(uint8_t* file, uint32_t line)
 {
 	while (1);

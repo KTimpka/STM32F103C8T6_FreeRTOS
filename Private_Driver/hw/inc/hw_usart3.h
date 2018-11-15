@@ -36,8 +36,10 @@
 #define DMA_RCC				RCC_AHBPeriph_DMA1		//DMA clock
 #define DMA_RX_CHANNEL		DMA1_Channel3			//DMA RX channel
 #define DMA_TX_CHANNEL		DMA1_Channel2			//DMA TX channel
-#define DMA_NVIC_CHANNEL	DMA1_Channel2_IRQn		//NVIC DMA interruption
-#define DMA_NVIC_FLAG		DMA1_FLAG_TC2			//NVIC DMA Flag to check
+#define DMA_NVIC_TX_CHANNEL	DMA1_Channel2_IRQn		//NVIC DMA interruption
+#define DMA_NVIC_RX_CHANNEL	DMA1_Channel3_IRQn		//NVIC DMA interruption
+#define DMA_NVIC_TX_FLAG	DMA1_FLAG_TC2			//NVIC DMA Flag to check
+#define DMA_NVIC_RX_FLAG	DMA1_FLAG_TC3			//NVIC DMA Flag to check
 
 
 /*
@@ -51,11 +53,14 @@ void hw_usart3_init(uint32_t baud);
 void hw_usart3_dma_rx_init(uint32_t buffer_address, uint32_t buffer_size);
 void hw_usart3_dma_tx_init(uint32_t buffer_address, uint32_t buffer_size);
 uint32_t hw_usart3_send_dma(uint32_t buffer, uint32_t size);
+void hw_usart3_receive_dma(uint32_t buffer, uint32_t size);
 /*
  * NVIC functions
  * */
 void DMA1_Channel2_IRQHandler(void);
+void DMA1_Channel3_IRQHandler(void);
 
+extern void DMA1_Channel3_IRQHandler_user(void);
 /*
  * Threads
  * */
