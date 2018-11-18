@@ -7,6 +7,22 @@
 
 #include "hw_usart3.h"
 
+#define USART_USED			USART3					//USART in use APB1PeriphClock
+#define PORT_USED			GPIOB					//Port in use
+#define	USART_RCC			RCC_APB1Periph_USART3	//USART Clock
+#define PORT_RCC			RCC_APB2Periph_GPIOB	//Port clock
+#define PIN_TX				GPIO_Pin_11				//TX port number
+#define PIN_RX				GPIO_Pin_10				//RX poer number
+#define DMA_RCC				RCC_AHBPeriph_DMA1		//DMA clock
+#define DMA_RX_CHANNEL		DMA1_Channel3			//DMA RX channel
+#define DMA_TX_CHANNEL		DMA1_Channel2			//DMA TX channel
+#define DMA_NVIC_TX_CHANNEL	DMA1_Channel2_IRQn		//NVIC DMA interruption
+#define DMA_NVIC_RX_CHANNEL	DMA1_Channel3_IRQn		//NVIC DMA interruption
+#define DMA_NVIC_TX_FLAG	DMA1_FLAG_TC2			//NVIC DMA Flag to check
+#define DMA_NVIC_RX_FLAG	DMA1_FLAG_TC3			//NVIC DMA Flag to check
+
+
+
 static SemaphoreHandle_t G_WRITE_LOCK;
 
 /*
@@ -84,7 +100,7 @@ void hw_usart3_dma_rx_init(uint32_t buffer_address, uint32_t buffer_size)
 	DMA_Init(DMA_RX_CHANNEL, &DMA_Conf);							//Init DMA for RX
 	USART_DMACmd(USART_USED, USART_DMAReq_Rx, ENABLE);				//Enable USART DMA request
 	USART_ITConfig(USART_USED, USART_IT_IDLE, ENABLE);				//Enable USART idle line interruption
-	DMA_ITConfig(DMA_RX_CHANNEL, DMA_NVIC_RX_FLAG, ENABLE);			//Enable DMA NVIC transfer complete
+	DMA_ITConfig(DMA_RX_CHANNEL, DMA_IT_TC, ENABLE);				//Enable DMA NVIC transfer complete
 
 	NVIC_InitTypeDef NVIC_conf;
 
@@ -122,7 +138,7 @@ void hw_usart3_dma_tx_init(uint32_t buffer_address, uint32_t buffer_size)
 
 	DMA_Init(DMA_TX_CHANNEL, &DMA_Conf);							//Configure DMA
 	USART_DMACmd(USART_USED, USART_DMAReq_Tx, ENABLE);				//Enable USART DMA request
-	DMA_ITConfig(DMA_TX_CHANNEL, DMA_NVIC_TX_FLAG, ENABLE);			//Enable DMA NVIC transfer complete
+	DMA_ITConfig(DMA_TX_CHANNEL, DMA_IT_TC, ENABLE);				//Enable DMA NVIC transfer complete
 
 
 	NVIC_InitTypeDef NVIC_conf;
@@ -150,7 +166,7 @@ uint32_t hw_usart3_send_dma(uint32_t buffer, uint32_t size)
 	if (xSemaphoreTake(G_WRITE_LOCK, 0) == pdFAIL)
 		return 0;
 
-	//DMA_Cmd(DMA_TX_CHANNEL, DISABLE);	//Stop DMA
+	DMA_Cmd(DMA_TX_CHANNEL, DISABLE);	//Stop DMA
 	DMA_TX_CHANNEL->CNDTR	=	size;	//Update buffer size
 	DMA_TX_CHANNEL->CMAR	=	buffer;	//Update buffer address
 	DMA_Cmd(DMA_TX_CHANNEL, ENABLE);	//Start DMA
@@ -167,7 +183,7 @@ uint32_t hw_usart3_send_dma(uint32_t buffer, uint32_t size)
  * */
 void hw_usart3_receive_dma(uint32_t buffer, uint32_t size)
 {
-	//DMA_Cmd(DMA_RX_CHANNEL, DISABLE);	//Stop DMA
+	DMA_Cmd(DMA_RX_CHANNEL, DISABLE);	//Stop DMA
 	DMA_RX_CHANNEL->CNDTR	=	size;	//Update buffer size
 	DMA_RX_CHANNEL->CMAR	=	buffer;	//Update buffer address
 	DMA_Cmd(DMA_RX_CHANNEL, ENABLE);	//Start DMA
@@ -175,10 +191,12 @@ void hw_usart3_receive_dma(uint32_t buffer, uint32_t size)
 
 /*
  * Mute channel until idle line is detected
+ * Before selecting Mute mode (by setting the RWU bit) the USART must first receive a
+ * data byte, otherwise it cannot function in Mute mode with wakeup by Idle line detection.
  * */
 void hw_usart3_mute()
 {
-	//USART_USED->CR1
+	USART_USED->CR1 |= USART_CR1_IDLEIE;	//Receiver to mute mode
 }
 
 /*
@@ -186,10 +204,10 @@ void hw_usart3_mute()
  * If data is sent out, transfer complete interruption is generated.
  * With this we can reset G_WRITE_LOCK.
  * */
-void DMA1_Channel2_IRQHandler(void)
+void HW_USART3_NVIC_TX_HANDLER(void)
 {
 	if (DMA_GetFlagStatus(DMA_NVIC_TX_FLAG)) {
-		DMA_ClearFlag(DMA_NVIC_TX_FLAG);		//Clear flag
+		DMA_ClearFlag(DMA_NVIC_TX_FLAG);	//Clear flag
 		DMA_Cmd(DMA_TX_CHANNEL, DISABLE);	//Stop DMA
 		xSemaphoreGive(G_WRITE_LOCK);		//Reset lock
 	}
@@ -200,16 +218,22 @@ void DMA1_Channel2_IRQHandler(void)
  * If DMA buffer is full, transfer complete interruption is generated.
  * User has to define DMA1_Channel3_IRQHandler_user() function.
  * */
-void DMA1_Channel3_IRQHandler(void)
+void HW_USART3_NVIC_RX_HANDLER(void)
 {
 	if (DMA_GetFlagStatus(DMA_NVIC_RX_FLAG)) {
 		DMA_ClearFlag(DMA_NVIC_RX_FLAG);	//Clear flag
 		DMA_Cmd(DMA_RX_CHANNEL, DISABLE);	//Stop DMA
-		DMA1_Channel3_IRQHandler_user();	//Reset lock
+		hw_usart3_rx_dma_handler();
 	}
 }
 
-void USART3_IRQHandler(void)
+/*
+ * USART3 Interruption handler
+ * */
+void HW_USART3_NVIC_USART_HANDLER(void)
 {
-
+	if (USART_GetFlagStatus(USART_USED, USART_FLAG_IDLE)) {
+			USART_ClearFlag(USART_USED, USART_FLAG_IDLE);	//Clear flag
+			hw_usart3_rx_idle_handler();
+	}
 }

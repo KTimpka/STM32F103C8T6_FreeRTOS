@@ -26,22 +26,9 @@
 /*
  * Defines, macros
  * */
-
-#define USART_USED			USART3					//USART in use APB1PeriphClock
-#define PORT_USED			GPIOB					//Port in use
-#define	USART_RCC			RCC_APB1Periph_USART3	//USART Clock
-#define PORT_RCC			RCC_APB2Periph_GPIOB	//Port clock
-#define PIN_TX				GPIO_Pin_11				//TX port number
-#define PIN_RX				GPIO_Pin_10				//RX poer number
-#define DMA_RCC				RCC_AHBPeriph_DMA1		//DMA clock
-#define DMA_RX_CHANNEL		DMA1_Channel3			//DMA RX channel
-#define DMA_TX_CHANNEL		DMA1_Channel2			//DMA TX channel
-#define DMA_NVIC_TX_CHANNEL	DMA1_Channel2_IRQn		//NVIC DMA interruption
-#define DMA_NVIC_RX_CHANNEL	DMA1_Channel3_IRQn		//NVIC DMA interruption
-#define DMA_NVIC_TX_FLAG	DMA1_FLAG_TC2			//NVIC DMA Flag to check
-#define DMA_NVIC_RX_FLAG	DMA1_FLAG_TC3			//NVIC DMA Flag to check
-
-
+#define HW_USART3_NVIC_TX_HANDLER		DMA1_Channel2_IRQHandler
+#define HW_USART3_NVIC_RX_HANDLER		DMA1_Channel3_IRQHandler
+#define HW_USART3_NVIC_USART_HANDLER	USART3_IRQHandler
 /*
  * GLOBAL
  * */
@@ -57,10 +44,12 @@ void hw_usart3_receive_dma(uint32_t buffer, uint32_t size);
 /*
  * NVIC functions
  * */
-void DMA1_Channel2_IRQHandler(void);
-void DMA1_Channel3_IRQHandler(void);
+void HW_USART3_NVIC_TX_HANDLER(void);
+void HW_USART3_NVIC_RX_HANDLER(void);
+void HW_USART3_NVIC_USART_HANDLER(void);
 
-extern void DMA1_Channel3_IRQHandler_user(void);
+extern void hw_usart3_rx_dma_handler(void);
+extern void hw_usart3_rx_idle_handler(void);
 /*
  * Threads
  * */

@@ -18,6 +18,7 @@
 #include "hw_start.h"
 #include "blinky.h"
 //#include "hw_usart_simple.h"
+#include "hw_usart3.h"
 			
 static void test_thread(void *pvParameters);
 
@@ -68,11 +69,27 @@ static void test_thread(void *pvParameters)
 		vTaskDelay((TickType_t) (500 / portTICK_PERIOD_MS));
 	}
 	*/
+	uint8_t buffer[] = "KollaneKala!\n";
+
+	hw_usart3_init(9600);
+	hw_usart3_dma_tx_init((uint32_t)buffer, 13);
+	hw_usart3_dma_rx_init((uint32_t)buffer, 13);
+
+	while (1){
+		hw_usart3_send_dma((uint32_t)buffer, 13);
+
+		vTaskDelay((TickType_t) (500 / portTICK_PERIOD_MS));
+	}
 
 	for(;;);
 }
 
-void DMA1_Channel3_IRQHandler_user(void)
+void hw_usart3_rx_dma_handler(void)
+{
+
+}
+
+void hw_usart3_rx_idle_handler(void)
 {
 
 }
