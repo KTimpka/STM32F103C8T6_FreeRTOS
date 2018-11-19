@@ -181,12 +181,29 @@ uint32_t hw_usart3_send_dma(uint32_t buffer, uint32_t size)
  * @param uint32_t size			=	buffer size
  *
  * */
-void hw_usart3_receive_dma(uint32_t buffer, uint32_t size)
+void hw_usart3_receiver_dma(uint32_t buffer, uint32_t size)
 {
-	DMA_Cmd(DMA_RX_CHANNEL, DISABLE);	//Stop DMA
-	DMA_RX_CHANNEL->CNDTR	=	size;	//Update buffer size
-	DMA_RX_CHANNEL->CMAR	=	buffer;	//Update buffer address
-	DMA_Cmd(DMA_RX_CHANNEL, ENABLE);	//Start DMA
+	DMA_Cmd(DMA_RX_CHANNEL, DISABLE);			//Stop DMA
+	DMA_RX_CHANNEL->CNDTR	=	size;			//Update buffer size
+	DMA_RX_CHANNEL->CMAR	=	buffer;			//Update buffer address
+	DMA_Cmd(DMA_RX_CHANNEL, ENABLE);			//Start DMA
+	USART_USED->CR1			|=	USART_CR1_RE;	//Enable receiver
+}
+
+/*
+ * Disable receiver
+ * */
+void hw_usart3_rx_stop()
+{
+	USART_USED->CR1	&= ~USART_CR1_RE;	//Disable receiver
+}
+
+/*
+ * Return rx data count
+ * */
+uint16_t hw_usart3_rx_data_count(uint16_t buffer_size)
+{
+	return buffer_size - DMA_GetCurrDataCounter(DMA_RX_CHANNEL);
 }
 
 /*
@@ -210,6 +227,7 @@ void HW_USART3_NVIC_TX_HANDLER(void)
 		DMA_ClearFlag(DMA_NVIC_TX_FLAG);	//Clear flag
 		DMA_Cmd(DMA_TX_CHANNEL, DISABLE);	//Stop DMA
 		xSemaphoreGive(G_WRITE_LOCK);		//Reset lock
+		hw_usart3_tx_dma_handler();
 	}
 }
 

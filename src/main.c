@@ -84,16 +84,6 @@ static void test_thread(void *pvParameters)
 	for(;;);
 }
 
-void hw_usart3_rx_dma_handler(void)
-{
-
-}
-
-void hw_usart3_rx_idle_handler(void)
-{
-
-}
-
 void assert_failed(uint8_t* file, uint32_t line)
 {
 	while (1);

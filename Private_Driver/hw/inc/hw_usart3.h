@@ -40,7 +40,9 @@ void hw_usart3_init(uint32_t baud);
 void hw_usart3_dma_rx_init(uint32_t buffer_address, uint32_t buffer_size);
 void hw_usart3_dma_tx_init(uint32_t buffer_address, uint32_t buffer_size);
 uint32_t hw_usart3_send_dma(uint32_t buffer, uint32_t size);
-void hw_usart3_receive_dma(uint32_t buffer, uint32_t size);
+void hw_usart3_receiver_dma(uint32_t buffer, uint32_t size);
+void hw_usart3_rx_stop();
+uint16_t hw_usart3_rx_data_count(uint16_t buffer_size);
 /*
  * NVIC functions
  * */
@@ -49,6 +51,7 @@ void HW_USART3_NVIC_RX_HANDLER(void);
 void HW_USART3_NVIC_USART_HANDLER(void);
 
 extern void hw_usart3_rx_dma_handler(void);
+extern void hw_usart3_tx_dma_handler(void);
 extern void hw_usart3_rx_idle_handler(void);
 /*
  * Threads
