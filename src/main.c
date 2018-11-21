@@ -19,6 +19,7 @@
 #include "blinky.h"
 //#include "hw_usart_simple.h"
 #include "hw_usart3.h"
+#include "modbus_rtu.h"
 			
 static void test_thread(void *pvParameters);
 
@@ -69,6 +70,7 @@ static void test_thread(void *pvParameters)
 		vTaskDelay((TickType_t) (500 / portTICK_PERIOD_MS));
 	}
 	*/
+	/*
 	uint8_t buffer[] = "KollaneKala!\n";
 
 	hw_usart3_init(9600);
@@ -80,7 +82,11 @@ static void test_thread(void *pvParameters)
 
 		vTaskDelay((TickType_t) (500 / portTICK_PERIOD_MS));
 	}
-
+	*/
+	mb_rtu_init();
+	while (1){
+		vTaskDelay((TickType_t) (500 / portTICK_PERIOD_MS));
+	}
 	for(;;);
 }
 

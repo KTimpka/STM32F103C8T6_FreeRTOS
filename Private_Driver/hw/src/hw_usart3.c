@@ -7,30 +7,32 @@
 
 #include "hw_usart3.h"
 
-#define USART_USED			USART3					//USART in use APB1PeriphClock
-#define PORT_USED			GPIOB					//Port in use
-#define	USART_RCC			RCC_APB1Periph_USART3	//USART Clock
-#define PORT_RCC			RCC_APB2Periph_GPIOB	//Port clock
-#define PIN_TX				GPIO_Pin_11				//TX port number
-#define PIN_RX				GPIO_Pin_10				//RX poer number
-#define DMA_RCC				RCC_AHBPeriph_DMA1		//DMA clock
-#define DMA_RX_CHANNEL		DMA1_Channel3			//DMA RX channel
-#define DMA_TX_CHANNEL		DMA1_Channel2			//DMA TX channel
-#define DMA_NVIC_TX_CHANNEL	DMA1_Channel2_IRQn		//NVIC DMA interruption
-#define DMA_NVIC_RX_CHANNEL	DMA1_Channel3_IRQn		//NVIC DMA interruption
-#define DMA_NVIC_TX_FLAG	DMA1_FLAG_TC2			//NVIC DMA Flag to check
-#define DMA_NVIC_RX_FLAG	DMA1_FLAG_TC3			//NVIC DMA Flag to check
+#define USART_USED				USART3					//USART in use APB1PeriphClock
+#define PORT_USED				GPIOB					//Port in use
+#define	USART_RCC				RCC_APB1Periph_USART3	//USART Clock
+#define PORT_RCC				RCC_APB2Periph_GPIOB	//Port clock
+#define PIN_RX					GPIO_Pin_11				//RX port number
+#define PIN_TX					GPIO_Pin_10				//TX port number
+#define DMA_RCC					RCC_AHBPeriph_DMA1		//DMA clock
+#define DMA_RX_CHANNEL			DMA1_Channel3			//DMA RX channel
+#define DMA_TX_CHANNEL			DMA1_Channel2			//DMA TX channel
+#define DMA_NVIC_TX_CHANNEL		DMA1_Channel2_IRQn		//NVIC DMA interruption
+#define DMA_NVIC_RX_CHANNEL		DMA1_Channel3_IRQn		//NVIC DMA interruption
+#define DMA_NVIC_TX_FLAG		DMA1_FLAG_TC2			//NVIC DMA Flag to check
+#define DMA_NVIC_RX_FLAG		DMA1_FLAG_TC3			//NVIC DMA Flag to check
+#define USART_NVIC_IDLE_CHANNEL	USART3_IRQn				//NVIC USART3 interruption
 
 
 
-static SemaphoreHandle_t G_WRITE_LOCK;
+static SemaphoreHandle_t G_WRITE_LOCK;	//Lock TX if DMA is still in action
 
 /*
+ * @param uint32_t baud	: User defined BAUDRATE
  *
  * Configure USART hardware
  * 		USART		->	USART3
- * 		PIN_TX		->	GPIO_Pin_10
- * 		PIN_RX		->	GPIO_Pin_11
+ * 		PIN_RX		->	GPIO_Pin_10
+ * 		PIN_TX		->	GPIO_Pin_11
  * 		BAUDRATE	->	USER_DEFINED
  * 		DATA_LENGTH	->	8Bit
  * 		PARITY		->	EVEN
@@ -47,13 +49,13 @@ void hw_usart3_init(uint32_t baud)
 	GPIO_InitTypeDef GPIO_Conf;
 
 	//Configure Port
-	GPIO_Conf.GPIO_Pin 		= PIN_TX;
+	GPIO_Conf.GPIO_Pin 		= PIN_RX;
 	GPIO_Conf.GPIO_Speed 	= GPIO_Speed_2MHz;
 	GPIO_Conf.GPIO_Mode 	= GPIO_Mode_IN_FLOATING;
 	GPIO_Init(PORT_USED, &GPIO_Conf);
 
 	//Configure Port
-	GPIO_Conf.GPIO_Pin 		= PIN_RX;
+	GPIO_Conf.GPIO_Pin 		= PIN_TX;
 	//GPIO_Conf.GPIO_Speed 	= GPIO_Speed_2MHz;
 	GPIO_Conf.GPIO_Mode 	= GPIO_Mode_AF_PP;
 	GPIO_Init(PORT_USED, &GPIO_Conf);
@@ -61,12 +63,12 @@ void hw_usart3_init(uint32_t baud)
 	//USART config struct
 	USART_InitTypeDef USART_Conf;
 
-	USART_Conf.USART_BaudRate				=	baud;
-	USART_Conf.USART_WordLength				=	USART_WordLength_9b;
-	USART_Conf.USART_StopBits				=	USART_StopBits_1;
-	USART_Conf.USART_Parity					=	USART_Parity_Even;
-	USART_Conf.USART_Mode					=	USART_Mode_Rx | USART_Mode_Tx;
-	USART_Conf.USART_HardwareFlowControl	=	USART_HardwareFlowControl_None;
+	USART_Conf.USART_BaudRate				=	baud;								//BAUD RATE
+	USART_Conf.USART_WordLength				=	USART_WordLength_9b;				//8bits of data + 1 bit of parity
+	USART_Conf.USART_StopBits				=	USART_StopBits_1;					//1bit for stop
+	USART_Conf.USART_Parity					=	USART_Parity_Even;					//Parity even
+	USART_Conf.USART_Mode					=	USART_Mode_Rx | USART_Mode_Tx;		//Enable RX and TX
+	USART_Conf.USART_HardwareFlowControl	=	USART_HardwareFlowControl_None;		//No HW control
 	USART_Init(USART_USED, &USART_Conf);					//Apply to hardware
 	USART_WakeUpConfig(USART_USED, USART_WakeUp_IdleLine);	//Wake up if idle line is detected
 	USART_Cmd(USART_USED, ENABLE);							//Start USART
@@ -109,6 +111,13 @@ void hw_usart3_dma_rx_init(uint32_t buffer_address, uint32_t buffer_size)
 	NVIC_conf.NVIC_IRQChannelSubPriority			=	0;					//Sub Priority not used
 	NVIC_conf.NVIC_IRQChannelCmd					=	ENABLE;				//Enable DMA1_Channel3 interrupt
 	NVIC_Init(&NVIC_conf);
+
+	NVIC_conf.NVIC_IRQChannel						=	USART_NVIC_IDLE_CHANNEL;//NVIC interrupt vector
+	//NVIC_conf.NVIC_IRQChannelPreemptionPriority	=	15;						//Priority 0...15	Not important at all
+	//NVIC_conf.NVIC_IRQChannelSubPriority			=	0;						//Sub Priority not used
+	//NVIC_conf.NVIC_IRQChannelCmd					=	ENABLE;					//Enable DMA1_Channel3 interrupt
+	NVIC_Init(&NVIC_conf);
+
 }
 
 /*
@@ -200,6 +209,8 @@ void hw_usart3_rx_stop()
 
 /*
  * Return rx data count
+ * @param uint16_t buffer_size :	buffer used for DMA to calculate data count,
+ * 									(buffer_size - dma_free_space)
  * */
 uint16_t hw_usart3_rx_data_count(uint16_t buffer_size)
 {
@@ -213,7 +224,7 @@ uint16_t hw_usart3_rx_data_count(uint16_t buffer_size)
  * */
 void hw_usart3_mute()
 {
-	USART_USED->CR1 |= USART_CR1_IDLEIE;	//Receiver to mute mode
+	USART_USED->CR1 |= USART_CR1_RWU;	//Receiver to mute mode
 }
 
 /*
@@ -227,7 +238,7 @@ void HW_USART3_NVIC_TX_HANDLER(void)
 		DMA_ClearFlag(DMA_NVIC_TX_FLAG);	//Clear flag
 		DMA_Cmd(DMA_TX_CHANNEL, DISABLE);	//Stop DMA
 		xSemaphoreGive(G_WRITE_LOCK);		//Reset lock
-		hw_usart3_tx_dma_handler();
+		hw_usart3_tx_dma_handler();			//User defined handler after flag is removed
 	}
 }
 
@@ -241,7 +252,7 @@ void HW_USART3_NVIC_RX_HANDLER(void)
 	if (DMA_GetFlagStatus(DMA_NVIC_RX_FLAG)) {
 		DMA_ClearFlag(DMA_NVIC_RX_FLAG);	//Clear flag
 		DMA_Cmd(DMA_RX_CHANNEL, DISABLE);	//Stop DMA
-		hw_usart3_rx_dma_handler();
+		hw_usart3_rx_dma_handler();			//User defined handler after flag is removed
 	}
 }
 
@@ -250,8 +261,14 @@ void HW_USART3_NVIC_RX_HANDLER(void)
  * */
 void HW_USART3_NVIC_USART_HANDLER(void)
 {
-	if (USART_GetFlagStatus(USART_USED, USART_FLAG_IDLE)) {
-			USART_ClearFlag(USART_USED, USART_FLAG_IDLE);	//Clear flag
-			hw_usart3_rx_idle_handler();
+	if (USART_GetITStatus(USART_USED, USART_IT_IDLE)) {
+		/*
+		 * The PE (Parity error), FE (Framing error), NE (Noise error), ORE (OverRun error) and IDLE
+		 * (Idle line detected) flags are cleared by a software sequence: a read operation to the
+		 * USART_SR register (USART_GetFlagStatus()) followed by a read operation to the
+		 * USART_DR register (USART_ReceiveData()).
+		 * */
+		USART_ReceiveData(USART_USED);	//Clear flag
+		hw_usart3_rx_idle_handler();	//User defined handler after flag is removed
 	}
 }
